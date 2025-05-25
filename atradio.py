@@ -3,8 +3,18 @@ import signal
 import sys
 import time
 import platform
+import curses
+import csv
+from curses import wrapper
 
 
+def load_stations(filename):
+    stations = []
+    with open(filename, mode='r', encoding='utf-8') as file:
+        reader = csv.DictReader(file, delimiter=';')
+        for row in reader:
+            stations.append((row['Name'], row['URL']))
+    return stations
 
 def play_station(radio_url):
     vlc_prg = ""
@@ -65,13 +75,102 @@ def play_station(radio_url):
         print("VLC остановлен.")
 
 
-def main():
+def main(stdscr):
+    curses.curs_set(0)  # Скрываем курсор
+    stations = load_stations('data/ru_radio_stations_tatar.csv')
+    current_row = 0
+    offset = 0  # Смещение для прокрутки списка
 
+    while True:
+        try:
+            stdscr.clear()
+            h, w = stdscr.getmaxyx()
 
-    # URL радиостанции
-    RADIO_URL = "http://retro.volna.top/Retro"
+            # Проверяем минимальный размер терминала
+            if h < 5 or w < 40:
+                stdscr.addstr(0, 0, "Terminal too small! Please resize.", curses.A_BOLD)
+                stdscr.refresh()
+                stdscr.getch()
+                continue
 
-    play_station(radio_url=RADIO_URL)
+            # Рассчитываем сколько станций можем показать
+            max_display = h - 3  # -3 для заголовка и статусной строки
+
+            # Корректируем смещение, чтобы текущая строка была видна
+            if current_row < offset:
+                offset = current_row
+            elif current_row >= offset + max_display:
+                offset = current_row - max_display + 1
+
+            # Отображаем заголовок
+            title = "Татарские радиостанции (Enter - играть, q - выход)"
+            title_x = max(0, w//2 - len(title)//2)
+            stdscr.addstr(0, title_x, title)
+
+            # Отображаем видимую часть списка станций
+            for idx in range(offset, min(offset + max_display, len(stations))):
+                name, url = stations[idx]
+                x = max(0, w//2 - len(name)//2)
+                y = idx - offset + 2  # +2 чтобы оставить место для заголовка
+                
+                try:
+                    if idx == current_row:
+                        stdscr.attron(curses.color_pair(1))
+                        stdscr.addstr(y, x, name)
+                        stdscr.attroff(curses.color_pair(1))
+                    else:
+                        stdscr.addstr(y, x, name)
+                except curses.error:
+                    pass
+
+            # Показываем подсказку внизу экрана
+            status = f"Выбрано: {stations[current_row][0]} [{current_row + 1}/{len(stations)}]"
+            url_display = stations[current_row][1]
+            
+            # Обрезаем URL, если он слишком длинный
+            max_url_len = w - len(status) - 2
+            if max_url_len > 0 and len(url_display) > max_url_len:
+                url_display = url_display[:max_url_len-3] + "..."
+            
+            try:
+                stdscr.addstr(h-1, 0, status)
+                stdscr.addstr(h-1, len(status)+1, url_display, curses.A_DIM)
+            except curses.error:
+                pass
+
+            key = stdscr.getch()
+
+            if key == curses.KEY_UP and current_row > 0:
+                current_row -= 1
+            elif key == curses.KEY_DOWN and current_row < len(stations)-1:
+                current_row += 1
+            elif key == curses.KEY_ENTER or key in [10, 13]:
+                curses.endwin()
+                play_station(stations[current_row][1])
+                # Возвращаемся в curses режим
+                stdscr = curses.initscr()
+                curses.noecho()
+                curses.cbreak()
+                curses.curs_set(0)
+                curses.start_color()
+                curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)
+            elif key == ord('q'):
+                break
+
+        except KeyboardInterrupt:
+            break
 
 if __name__ == "__main__":
-    main()
+    try:
+        # Инициализация curses
+        curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        curses.start_color()
+        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)
+        
+        curses.wrapper(main)
+    finally:
+        # Всегда завершаем curses правильно
+        curses.endwin()
+   
