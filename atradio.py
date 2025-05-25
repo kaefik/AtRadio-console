@@ -4,11 +4,9 @@ import sys
 import time
 import platform
 
-# URL радиостанции
-RADIO_URL = "http://retro.volna.top/Retro"
 
-def main():
 
+def play_station(radio_url):
     vlc_prg = ""
     os_name = platform.system()
 
@@ -33,7 +31,7 @@ def main():
 
         # Запуск VLC в фоне
         vlc_process = subprocess.Popen(
-            [vlc_prg, "--intf", "dummy", RADIO_URL],
+            [vlc_prg, "--intf", "dummy", radio_url],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -65,6 +63,15 @@ def main():
         vlc_process.terminate()
         vlc_process.wait()
         print("VLC остановлен.")
+
+
+def main():
+
+
+    # URL радиостанции
+    RADIO_URL = "http://retro.volna.top/Retro"
+
+    play_station(radio_url=RADIO_URL)
 
 if __name__ == "__main__":
     main()
