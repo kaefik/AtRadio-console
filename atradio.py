@@ -12,13 +12,7 @@ def main():
     vlc_prg = ""
     os_name = platform.system()
 
-    if os_name == "Windows":
-        vlc_prg = "vlc\\vlc.exe"  # Обычно VLC в Windows имеет расширение .exe
-    elif os_name == "Linux" or os_name == "Darwin":
-        vlc_prg = "vlc"
-    else:
-        print(f"❌ Неизвестная ОС: {os_name}")
-        sys.exit(1)
+    vlc_prg = "vlc.exe" if os_name == "Windows" else "vlc"
 
     try:
         # Проверяем, есть ли VLC в системе (только для Linux/macOS)
