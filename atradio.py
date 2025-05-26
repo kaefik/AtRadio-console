@@ -19,6 +19,18 @@ def load_stations(filename):
 
 
 def main(stdscr):
+    # Инициализация цветов (перенесено внутрь main)
+    curses.start_color()
+    curses.use_default_colors()
+    
+    # Упрощенная цветовая схема для лучшей совместимости
+    try:
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)  # Выделенный элемент
+        curses.init_pair(2, curses.COLOR_GREEN, -1)  # Играющая станция
+    except:
+        # Если цвета не поддерживаются, используем атрибуты
+        pass
+    
     curses.curs_set(0)  # Скрываем курсор
     stations = load_stations('data/ru_radio_stations_tatar.csv')
     current_row = 0
@@ -76,9 +88,9 @@ def main(stdscr):
             title = "Список радиостанций"
             sub_title = "(Enter - играть, ESC - остановить, q - выход)"
             title_x = max(0, w//2 - len(title)//2)
-            stdscr.addstr(0, title_x, title)
+            stdscr.addstr(0, title_x, title, curses.A_BOLD)
             sub_title_x = max(0, w//2 - len(sub_title)//2)
-            stdscr.addstr(1, sub_title_x, sub_title)
+            stdscr.addstr(1, sub_title_x, sub_title, curses.A_DIM)
 
             # Отображаем список станций
             for idx in range(offset, min(offset + max_display, len(stations))):
@@ -88,19 +100,26 @@ def main(stdscr):
                 
                 try:
                     if idx == current_row:
-                        attr = curses.color_pair(1)
+                        # Выделенный элемент - используем reverse video если цвета не работают
+                        try:
+                            stdscr.addstr(y, x, name, curses.color_pair(1))
+                        except:
+                            stdscr.addstr(y, x, name, curses.A_REVERSE)
                     elif idx == playing_index:
-                        attr = curses.color_pair(2) | curses.A_BOLD
+                        # Играющая станция - жирный или цвет
+                        try:
+                            stdscr.addstr(y, x, name, curses.color_pair(2) | curses.A_BOLD)
+                        except:
+                            stdscr.addstr(y, x, name, curses.A_BOLD)
                     else:
-                        attr = curses.A_NORMAL
+                        stdscr.addstr(y, x, name)
 
-                    stdscr.attron(attr)
-                    stdscr.addstr(y, x, name)
-                    stdscr.attroff(attr)
-                    
                     # Добавляем значок проигрывания
                     if idx == playing_index:
-                        stdscr.addstr(y, x-2, "▶ ")
+                        try:
+                            stdscr.addstr(y, x-2, "▶ ")
+                        except:
+                            pass
                 except curses.error:
                     pass
 
@@ -108,7 +127,10 @@ def main(stdscr):
             status_line = h-2
             if playing_index >= 0:
                 status_text = f"Сейчас играет: {stations[playing_index][0]}"
-                stdscr.addstr(status_line, 0, status_text, curses.color_pair(2))
+                try:
+                    stdscr.addstr(status_line, 0, status_text, curses.color_pair(2) | curses.A_BOLD)
+                except:
+                    stdscr.addstr(status_line, 0, status_text, curses.A_BOLD)
             else:
                 stdscr.addstr(status_line, 0, "Готов к проигрыванию", curses.A_DIM)
 
@@ -163,29 +185,6 @@ def main(stdscr):
                 vlc_process.wait()
             break
 
-# if __name__ == "__main__":
-#     try:
-#         # Инициализация curses с дополнительными цветами
-#         curses.wrapper(main)
-#     except Exception as e:
-#         print(f"An error occurred: {e}")
-#     finally:
-#         try:
-#             curses.endwin()
-#         except:
-#             pass
-
 
 if __name__ == "__main__":
-
-    # Инициализация curses
-    curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    curses.start_color()        
-    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)  # Для выделения
-    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)  # Для играющей станции
-    
-    curses.wrapper(main)
-    
-   
+    wrapper(main)
