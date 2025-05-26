@@ -6,6 +6,7 @@ import platform
 import curses
 import csv
 from curses import wrapper
+import os
 
 
 def load_stations(filename):
@@ -28,7 +29,7 @@ def main(stdscr):
 
     vlc_prg = ""
     os_name = platform.system()
-    vlc_prg = "vlc.exe" if os_name == "Windows" else "vlc"
+    vlc_prg = "C:\\Program Files (x86)\\VideoLAN\VLC\\vlc.exe" if os_name == "Windows" else "vlc"
     # Проверяем, есть ли VLC в системе (только для Linux/macOS)
     if os_name != "Windows":
         check_installed = subprocess.run(
@@ -43,6 +44,11 @@ def main(stdscr):
                 print("  sudo dnf install vlc  # для Fedora")
             elif os_name == "Darwin":
                 print("  brew install vlc      # через Homebrew")
+            sys.exit(1)
+    else:
+        if not os.path.isfile(vlc_prg):
+            print("❌ VLC не установлен! Установите его:")
+            print("Скачайте по адресу https://www.videolan.org/vlc/")
             sys.exit(1)
 
 
