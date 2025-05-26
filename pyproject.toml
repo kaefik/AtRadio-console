@@ -11,5 +11,7 @@ dependencies = [
     "pygame>=2.6.1",
     "python-vlc>=3.0.21203",
     "requests>=2.32.3",
-    "windows-curses>=2.4.1",
+    
 ]
+[project.optional-dependencies]
+windows = ["windows-curses>=2.4.1"]
