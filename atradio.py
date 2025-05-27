@@ -76,7 +76,7 @@ def main(stdscr):
                 stdscr.getch()
                 continue
 
-            max_display = h - 4  # -4 для заголовка, статуса и строки состояния
+            max_display = h - 6  # -4 для заголовка, статуса и строки состояния
 
             # Корректируем смещение для прокрутки
             if current_row < offset:
@@ -124,7 +124,7 @@ def main(stdscr):
                     pass
 
             # Строка состояния проигрывания
-            status_line = h-2
+            status_line = h-3
             if playing_index >= 0:
                 status_text = f"Сейчас играет: {stations[playing_index][0]}"
                 try:
@@ -142,10 +142,21 @@ def main(stdscr):
                 url_display = url_display[:max_url_len-3] + "..."
             
             try:
-                stdscr.addstr(h-1, 0, status)
-                stdscr.addstr(h-1, len(status)+1, url_display, curses.A_DIM)
+                stdscr.addstr(h-2, 0, status)
+                stdscr.addstr(h-2, len(status)+1, url_display, curses.A_DIM)
             except curses.error:
                 pass
+            
+
+            # Строка подсказки функц клавиш
+            help_line = "+:добавить | -: удалить | F3: переместить | F4: изменить | F11: импорт | F12: экспорт | F10: выход "
+            title_x = max(0, w//2 - len(help_line)//2)
+            try:
+                stdscr.addstr(h-1, title_x, help_line)                
+            except curses.error:
+                pass
+
+
 
             key = stdscr.getch()
 
