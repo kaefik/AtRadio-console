@@ -388,9 +388,10 @@ def main(stdscr):
                         width= len(new_url) if len(new_url)>50 else 50
                         new_url = text_field(stdscr, h//2, w//2 - len(new_url)//2, width, new_url)
 
-                        # Сохраняем изменения
-                        stations[current_row] = (new_name, new_url)
-                        save_stations(stations_file, stations)
+                        if new_name and new_url:
+                            # Сохраняем изменения
+                            stations[current_row] = (new_name, new_url)
+                            save_stations(stations_file, stations)
                 elif key == curses.KEY_F2: 
                     # сохранение станций в файл
                     stdscr.clear()
