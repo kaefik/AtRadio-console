@@ -178,16 +178,17 @@ def main(stdscr):
 
             # Строка подсказки функц клавиш
             help_line = "+:добавить | -: удалить | F3: переместить | F4: изменить | F11: импорт | F12: экспорт | F10: выход "
+            help_line_f3 = " ↑: переместить вверх |  ↓: переместить вниз | Enter: закрепить перемешение  | Esc: отмена перемещения"
             title_x = max(0, w//2 - len(help_line)//2)
             try:
-                stdscr.addstr(h-1, title_x, help_line)                
+                if move_mode:
+                    stdscr.addstr(h-1, title_x, help_line_f3)                
+                else:
+                    stdscr.addstr(h-1, title_x, help_line)                
             except curses.error:
                 pass
 
-
-
             key = stdscr.getch()
-
 
              # В режиме перемещения обрабатываем клавиши вверх/вниз
             if move_mode:
