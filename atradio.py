@@ -37,6 +37,9 @@ def get_input(stdscr, prompt, y, x):
 
 
 def text_field(stdscr, y, x, width, initial_text=""):
+    """
+    если нажали  Esc, то возвращается None,  иначе возвращается строка
+    """
     text = list(initial_text)
     cursor_pos = len(text)
     curses.curs_set(1)  # Показываем курсор
@@ -54,7 +57,7 @@ def text_field(stdscr, y, x, width, initial_text=""):
         if key in (curses.KEY_ENTER, 10, 13):  # Enter - завершить
             break
         elif key == 27:  # ESC - отмена
-            text = list(initial_text)
+            return None
             break
         elif key == curses.KEY_BACKSPACE or key == 127:
             if cursor_pos > 0:
@@ -396,9 +399,9 @@ def main(stdscr):
                     stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)                
                     filename = f"{current_date}-radio_stations"
                     width = 50
-                    filename = new_url = text_field(stdscr, h//2, w//2 - len(filename)//2, width, filename)
-                    if len(filename)>0:                        
-                        filename = f"{filename}.csv"
+                    new_filename = text_field(stdscr, h//2, w//2 - len(filename)//2, width, filename)
+                    if new_filename and len(new_filename)>0:                        
+                        filename = f"{new_filename}.csv"
                         save_stations(filename, stations)
 
         except KeyboardInterrupt:
