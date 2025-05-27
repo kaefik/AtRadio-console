@@ -35,6 +35,49 @@ def get_input(stdscr, prompt, y, x):
     return input_str
 
 
+def text_field(stdscr, y, x, width, initial_text=""):
+    text = list(initial_text)
+    cursor_pos = len(text)
+    curses.curs_set(1)  # Показываем курсор
+    
+    while True:
+        # Отрисовываем текущий текст
+        stdscr.addstr(y, x, " " * width)  # Очищаем область
+        stdscr.addstr(y, x, "".join(text)[:width])
+        
+        # Устанавливаем курсор
+        stdscr.move(y, x + min(cursor_pos, width-1))
+        
+        key = stdscr.getch()
+        
+        if key in (curses.KEY_ENTER, 10, 13):  # Enter - завершить
+            break
+        elif key == 27:  # ESC - отмена
+            text = list(initial_text)
+            break
+        elif key == curses.KEY_BACKSPACE or key == 127:
+            if cursor_pos > 0:
+                text.pop(cursor_pos-1)
+                cursor_pos -= 1
+        elif key == curses.KEY_DC:  # Delete
+            if cursor_pos < len(text):
+                text.pop(cursor_pos)
+        elif key == curses.KEY_LEFT:
+            cursor_pos = max(0, cursor_pos - 1)
+        elif key == curses.KEY_RIGHT:
+            cursor_pos = min(len(text), cursor_pos + 1)
+        elif key == curses.KEY_HOME:
+            cursor_pos = 0
+        elif key == curses.KEY_END:
+            cursor_pos = len(text)
+        elif 32 <= key <= 126:  # Печатные символы
+            text.insert(cursor_pos, chr(key))
+            cursor_pos += 1
+    
+    curses.curs_set(0)  # Скрываем курсор
+    return "".join(text)
+
+
 def main(stdscr):
     # Инициализация цветов (перенесено внутрь main)
     curses.start_color()
@@ -177,7 +220,7 @@ def main(stdscr):
             
 
             # Строка подсказки функц клавиш
-            help_line = "+:добавить | -: удалить | F3: переместить | F4: изменить | F11: импорт | F12: экспорт | F10: выход "
+            help_line = "+:добавить | -: удалить | F3: переместить | F4: изменить | F10: выход "
             help_line_f3 = " ↑: переместить вверх |  ↓: переместить вниз | Enter: закрепить перемешение  | Esc: отмена перемещения"
             title_x = max(0, w//2 - len(help_line)//2)
             try:
@@ -315,8 +358,40 @@ def main(stdscr):
                         original_stations = stations.copy()  # Сохраняем исходный порядок
                     else:
                         moving_index = -1
+                elif key == curses.KEY_F4:
+                    # Редактирование текущей станции
+                    if len(stations) > 0:
+                        stdscr.clear()
+                        h, w = stdscr.getmaxyx()
+                        editing = True
+                        edit_step = 1  # 1 - редактирование названия, 2 - редактирование URL
+                        
+                        # Сохраняем оригинальные значения на случай отмены
+                        original_name, original_url = stations[current_row]
+                        new_name, new_url = original_name, original_url
 
-               
+                        # Шаг 1: Редактирование названия
+                        prompt = "Редактирование названия (Enter - подтвердить, Esc - отмена):"
+                        stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)                        
+                        width= len(new_name) if len(new_name)>50 else 50
+                        new_name = text_field(stdscr, h//2, w//2 - len(new_name)//2, width, new_name)
+
+                        # Шаг 2: Редактирование URL
+                        stdscr.clear()
+                        prompt = "Редактирование URL (Enter - подтвердить, Esc - отмена):"
+                        stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)
+                        #stdscr.addstr(h//2, w//2 - len(new_url)//2, new_url, curses.A_BOLD)
+                        width= len(new_url) if len(new_url)>50 else 50
+                        new_url = text_field(stdscr, h//2, w//2 - len(new_url)//2, width, new_url)
+
+                        # Сохраняем изменения
+                        stations[current_row] = (new_name, new_url)
+                        save_stations(stations_file, stations)
+
+
+                        
+
+
 
         except KeyboardInterrupt:
             if vlc_process and vlc_process.poll() is None:
