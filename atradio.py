@@ -18,6 +18,23 @@ def load_stations(filename):
     return stations
 
 
+def save_stations(filename, stations):
+    with open(filename, mode='w', encoding='utf-8', newline='') as file:
+        writer = csv.writer(file, delimiter=';')
+        writer.writerow(['Name', 'URL'])  # Заголовки
+        for name, url in stations:
+            writer.writerow([name, url])
+
+
+def get_input(stdscr, prompt, y, x):
+    curses.echo()
+    stdscr.addstr(y, x, prompt)
+    stdscr.refresh()
+    input_str = stdscr.getstr(y, x + len(prompt)).decode('utf-8')
+    curses.noecho()
+    return input_str
+
+
 def main(stdscr):
     # Инициализация цветов (перенесено внутрь main)
     curses.start_color()
@@ -32,7 +49,8 @@ def main(stdscr):
         pass
     
     curses.curs_set(0)  # Скрываем курсор
-    stations = load_stations('data/ru_radio_stations_tatar.csv')
+    stations_file = 'data/ru_radio_stations_tatar.csv'
+    stations = load_stations(stations_file)
     current_row = 0
     offset = 0
     vlc_process = None
@@ -190,6 +208,70 @@ def main(stdscr):
                         vlc_process.wait()
                     playing_index = -1
                 break
+            elif key == ord('+'):
+                # Добавление новой станции
+                stdscr.clear()
+                h, w = stdscr.getmaxyx()
+                
+                # Получаем название станции
+                name_prompt = "Название станции: "
+                name_y = h//2 - 1
+                name_x = w//2 - len(name_prompt)//2
+                name = get_input(stdscr, name_prompt, name_y, name_x)
+                
+                # Получаем URL станции
+                url_prompt = "URL станции: "
+                url_y = h//2 + 1
+                url_x = w//2 - len(url_prompt)//2
+                url = get_input(stdscr, url_prompt, url_y, url_x)
+                
+                # Добавляем новую станцию
+                stations.append((name, url))
+                save_stations(stations_file, stations)
+                
+                # Обновляем текущую строку
+                current_row = len(stations) - 1
+            elif key == ord('-'):
+            # Удаление текущей станции с подтверждением
+                if len(stations) > 0:
+                    # Создаем окно подтверждения
+                    confirm_win = curses.newwin(5, 50, h//2-2, w//2-25)
+                    confirm_win.border()
+                    confirm_win.addstr(1, 2, f"Удалить станцию: {stations[current_row][0]}?")
+                    confirm_win.addstr(3, 10, "[Y] Да    [N] Нет", curses.A_BOLD)
+                    confirm_win.refresh()
+                    
+                    # Ждем ответа пользователя
+                    while True:
+                        confirm_key = confirm_win.getch()
+                        if confirm_key in [ord('y'), ord('Y')]:
+                            # Останавливаем воспроизведение, если удаляем играющую станцию
+                            if playing_index == current_row:
+                                if vlc_process and vlc_process.poll() is None:
+                                    vlc_process.terminate()
+                                    vlc_process.wait()
+                                playing_index = -1
+                            
+                            # Удаляем станцию
+                            del stations[current_row]
+                            save_stations(stations_file, stations)
+                            
+                            # Корректируем позицию курсора
+                            if current_row >= len(stations):
+                                current_row = max(0, len(stations) - 1)
+                            # Корректируем индекс играющей станции
+                            if playing_index > current_row:
+                                playing_index -= 1
+                            break
+                        elif confirm_key in [ord('n'), ord('N'), 27]:  # 27 - ESC
+                            break
+                    
+                    # Закрываем окно подтверждения
+                    confirm_win.clear()
+                    confirm_win.refresh()
+                    del confirm_win
+                    stdscr.touchwin()
+                    stdscr.refresh()
 
         except KeyboardInterrupt:
             if vlc_process and vlc_process.poll() is None:
