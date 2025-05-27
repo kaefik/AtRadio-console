@@ -55,6 +55,8 @@ def main(stdscr):
     offset = 0
     vlc_process = None
     playing_index = -1  # Индекс проигрываемой станции (-1 - ничего не играет)
+    move_mode = False  # Флаг режима перемещения
+    moving_index = -1  # Индекс перемещаемой станции
 
 
     vlc_prg = ""
@@ -119,11 +121,18 @@ def main(stdscr):
                 
                 try:
                     if idx == current_row:
-                        # Выделенный элемент - используем reverse video если цвета не работают
-                        try:
-                            stdscr.addstr(y, x, name, curses.color_pair(1))
-                        except:
-                            stdscr.addstr(y, x, name, curses.A_REVERSE)
+                        # Выделенный элемент
+                        if move_mode:
+                            # В режиме перемещения - особое выделение
+                            try:
+                                stdscr.addstr(y, x, name, curses.color_pair(1) | curses.A_BLINK)
+                            except:
+                                stdscr.addstr(y, x, name, curses.A_REVERSE | curses.A_BLINK)
+                        else:
+                            try:
+                                stdscr.addstr(y, x, name, curses.color_pair(1))
+                            except:
+                                stdscr.addstr(y, x, name, curses.A_REVERSE)
                     elif idx == playing_index:
                         # Играющая станция - жирный или цвет
                         try:
@@ -179,99 +188,134 @@ def main(stdscr):
 
             key = stdscr.getch()
 
-            if key == curses.KEY_UP and current_row > 0:
-                current_row -= 1
-            elif key == curses.KEY_DOWN and current_row < len(stations)-1:
-                current_row += 1
-            elif key == curses.KEY_ENTER or key in [10, 13]:
-                # Останавливаем предыдущее проигрывание, если есть
-                if vlc_process and vlc_process.poll() is None:
-                    vlc_process.terminate()
-                    vlc_process.wait()
-                
-                # Запускаем новую станцию
-                playing_index = current_row
-                vlc_process = subprocess.Popen(
-                    [vlc_prg, "--intf", "dummy", stations[current_row][1]],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-            elif key == 27:  # ESC - остановить проигрывание
-                if vlc_process and vlc_process.poll() is None:
-                    vlc_process.terminate()
-                    vlc_process.wait()
-                    playing_index = -1
-            elif key in [ord('q'), 274]:
-                if playing_index >= 0:  # Если что-то играет - только остановить
+
+             # В режиме перемещения обрабатываем клавиши вверх/вниз
+            if move_mode:
+                if key == curses.KEY_UP and moving_index > 0:
+                    # Перемещаем станцию вверх
+                    stations[moving_index], stations[moving_index-1] = stations[moving_index-1], stations[moving_index]
+                    moving_index -= 1
+                    current_row = moving_index
+                elif key == curses.KEY_DOWN and moving_index < len(stations)-1:
+                    # Перемещаем станцию вниз
+                    stations[moving_index], stations[moving_index+1] = stations[moving_index+1], stations[moving_index]
+                    moving_index += 1
+                    current_row = moving_index
+                elif key in [curses.KEY_ENTER, 10, 13]:
+                    # Сохраняем изменения по Enter
+                    save_stations(stations_file, stations)
+                    move_mode = False
+                    moving_index = -1
+                elif key == 27:  # ESC - отмена изменений
+                    # Восстанавливаем исходный порядок
+                    stations = original_stations.copy()
+                    current_row = moving_index  # Возвращаем курсор на исходную позицию
+                    move_mode = False
+                    moving_index = -1
+            else:
+                if key == curses.KEY_UP and current_row > 0:
+                    current_row -= 1
+                elif key == curses.KEY_DOWN and current_row < len(stations)-1:
+                    current_row += 1
+                elif key == curses.KEY_ENTER or key in [10, 13]:
+                    # Останавливаем предыдущее проигрывание, если есть
                     if vlc_process and vlc_process.poll() is None:
                         vlc_process.terminate()
                         vlc_process.wait()
-                    playing_index = -1
-                break
-            elif key == ord('+'):
-                # Добавление новой станции
-                stdscr.clear()
-                h, w = stdscr.getmaxyx()
-                
-                # Получаем название станции
-                name_prompt = "Название станции: "
-                name_y = h//2 - 1
-                name_x = w//2 - len(name_prompt)//2
-                name = get_input(stdscr, name_prompt, name_y, name_x)
-                
-                # Получаем URL станции
-                url_prompt = "URL станции: "
-                url_y = h//2 + 1
-                url_x = w//2 - len(url_prompt)//2
-                url = get_input(stdscr, url_prompt, url_y, url_x)
-                
-                # Добавляем новую станцию
-                stations.append((name, url))
-                save_stations(stations_file, stations)
-                
-                # Обновляем текущую строку
-                current_row = len(stations) - 1
-            elif key == ord('-'):
-            # Удаление текущей станции с подтверждением
-                if len(stations) > 0:
-                    # Создаем окно подтверждения
-                    confirm_win = curses.newwin(5, 50, h//2-2, w//2-25)
-                    confirm_win.border()
-                    confirm_win.addstr(1, 2, f"Удалить станцию: {stations[current_row][0]}?")
-                    confirm_win.addstr(3, 10, "[Y] Да    [N] Нет", curses.A_BOLD)
-                    confirm_win.refresh()
                     
-                    # Ждем ответа пользователя
-                    while True:
-                        confirm_key = confirm_win.getch()
-                        if confirm_key in [ord('y'), ord('Y')]:
-                            # Останавливаем воспроизведение, если удаляем играющую станцию
-                            if playing_index == current_row:
-                                if vlc_process and vlc_process.poll() is None:
-                                    vlc_process.terminate()
-                                    vlc_process.wait()
-                                playing_index = -1
-                            
-                            # Удаляем станцию
-                            del stations[current_row]
-                            save_stations(stations_file, stations)
-                            
-                            # Корректируем позицию курсора
-                            if current_row >= len(stations):
-                                current_row = max(0, len(stations) - 1)
-                            # Корректируем индекс играющей станции
-                            if playing_index > current_row:
-                                playing_index -= 1
-                            break
-                        elif confirm_key in [ord('n'), ord('N'), 27]:  # 27 - ESC
-                            break
+                    # Запускаем новую станцию
+                    playing_index = current_row
+                    vlc_process = subprocess.Popen(
+                        [vlc_prg, "--intf", "dummy", stations[current_row][1]],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
+                elif key == 27:  # ESC - остановить проигрывание
+                    if vlc_process and vlc_process.poll() is None:
+                        vlc_process.terminate()
+                        vlc_process.wait()
+                        playing_index = -1
+                elif key in [ord('q'), 274]:
+                    if playing_index >= 0:  # Если что-то играет - только остановить
+                        if vlc_process and vlc_process.poll() is None:
+                            vlc_process.terminate()
+                            vlc_process.wait()
+                        playing_index = -1
+                    break
+                elif key == ord('+'):
+                    # Добавление новой станции
+                    stdscr.clear()
+                    h, w = stdscr.getmaxyx()
                     
-                    # Закрываем окно подтверждения
-                    confirm_win.clear()
-                    confirm_win.refresh()
-                    del confirm_win
-                    stdscr.touchwin()
-                    stdscr.refresh()
+                    # Получаем название станции
+                    name_prompt = "Название станции: "
+                    name_y = h//2 - 1
+                    name_x = w//2 - len(name_prompt)//2
+                    name = get_input(stdscr, name_prompt, name_y, name_x)
+                    
+                    # Получаем URL станции
+                    url_prompt = "URL станции: "
+                    url_y = h//2 + 1
+                    url_x = w//2 - len(url_prompt)//2
+                    url = get_input(stdscr, url_prompt, url_y, url_x)
+                    
+                    # Добавляем новую станцию
+                    stations.append((name, url))
+                    save_stations(stations_file, stations)
+                    
+                    # Обновляем текущую строку
+                    current_row = len(stations) - 1
+                elif key == ord('-'):
+                # Удаление текущей станции с подтверждением
+                    if len(stations) > 0:
+                        # Создаем окно подтверждения
+                        confirm_win = curses.newwin(5, 50, h//2-2, w//2-25)
+                        confirm_win.border()
+                        confirm_win.addstr(1, 2, f"Удалить станцию: {stations[current_row][0]}?")
+                        confirm_win.addstr(3, 10, "[Y] Да    [N] Нет", curses.A_BOLD)
+                        confirm_win.refresh()
+                        
+                        # Ждем ответа пользователя
+                        while True:
+                            confirm_key = confirm_win.getch()
+                            if confirm_key in [ord('y'), ord('Y')]:
+                                # Останавливаем воспроизведение, если удаляем играющую станцию
+                                if playing_index == current_row:
+                                    if vlc_process and vlc_process.poll() is None:
+                                        vlc_process.terminate()
+                                        vlc_process.wait()
+                                    playing_index = -1
+                                
+                                # Удаляем станцию
+                                del stations[current_row]
+                                save_stations(stations_file, stations)
+                                
+                                # Корректируем позицию курсора
+                                if current_row >= len(stations):
+                                    current_row = max(0, len(stations) - 1)
+                                # Корректируем индекс играющей станции
+                                if playing_index > current_row:
+                                    playing_index -= 1
+                                break
+                            elif confirm_key in [ord('n'), ord('N'), 27]:  # 27 - ESC
+                                break
+                        
+                        # Закрываем окно подтверждения
+                        confirm_win.clear()
+                        confirm_win.refresh()
+                        del confirm_win
+                        stdscr.touchwin()
+                        stdscr.refresh()
+                elif key == 267:
+                    # Вход/выход из режима перемещения
+                    move_mode = not move_mode
+                    if move_mode:
+                        moving_index = current_row
+                        original_stations = stations.copy()  # Сохраняем исходный порядок
+                    else:
+                        moving_index = -1
+
+               
 
         except KeyboardInterrupt:
             if vlc_process and vlc_process.poll() is None:
