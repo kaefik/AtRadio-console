@@ -7,6 +7,7 @@ import curses
 import csv
 from curses import wrapper
 import os
+from datetime import datetime
 
 
 def load_stations(filename):
@@ -387,11 +388,18 @@ def main(stdscr):
                         # Сохраняем изменения
                         stations[current_row] = (new_name, new_url)
                         save_stations(stations_file, stations)
-
-
-                        
-
-
+                elif key == curses.KEY_F2: 
+                    # сохранение станций в файл
+                    stdscr.clear()
+                    current_date = datetime.now().strftime("%Y%m%d")
+                    prompt = "Введите имя файла для сохранения станций:"
+                    stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)                
+                    filename = f"{current_date}-radio_stations"
+                    width = 50
+                    filename = new_url = text_field(stdscr, h//2, w//2 - len(filename)//2, width, filename)
+                    if len(filename)>0:                        
+                        filename = f"{filename}.csv"
+                        save_stations(filename, stations)
 
         except KeyboardInterrupt:
             if vlc_process and vlc_process.poll() is None:
