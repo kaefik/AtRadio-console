@@ -63,6 +63,7 @@ def main(stdscr):
             print("Скачайте по адресу https://www.videolan.org/vlc/")
             sys.exit(1)
 
+    stdscr.keypad(True)
 
     while True:
         try:
@@ -182,7 +183,7 @@ def main(stdscr):
                     vlc_process.terminate()
                     vlc_process.wait()
                     playing_index = -1
-            elif key == ord('q'):
+            elif key in [ord('q'), 274]:
                 if playing_index >= 0:  # Если что-то играет - только остановить
                     if vlc_process and vlc_process.poll() is None:
                         vlc_process.terminate()
