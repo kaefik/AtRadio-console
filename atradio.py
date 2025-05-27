@@ -374,7 +374,7 @@ def main(stdscr):
                         prompt = "Редактирование названия (Enter - подтвердить, Esc - отмена):"
                         stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)                        
                         width= len(new_name) if len(new_name)>50 else 50
-                        new_name = text_field(stdscr, h//2, w//2 - len(new_name)//2, width, new_name)
+                        new_name =text_field(stdscr, h//2, w//2 - len(new_name)//2, width, new_name)
 
                         # Шаг 2: Редактирование URL
                         stdscr.clear()
