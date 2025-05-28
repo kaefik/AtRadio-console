@@ -9,8 +9,17 @@ from curses import wrapper
 import os
 from datetime import datetime
 import click
+import telnetlib
 
 
+def set_vlc_volume(volume: int):
+    try:
+        tn = telnetlib.Telnet("localhost", 5000)
+        tn.write(f"volume {volume}\n".encode())  # Устанавливаем громкость
+        tn.write("quit\n".encode())  # Закрываем соединение
+        tn.close()
+    except ConnectionRefusedError:
+        print("❌ VLC не отвечает. Убедитесь, что запущен с --rc-host")
 
 def load_stations(filename):
     stations = []
@@ -153,6 +162,7 @@ def main(stdscr, autoplay):
     original_stations = ""
     original_stations_index = -1
     move_mode_playing = False # перемещение станции по спику которая проигрывается
+    current_volume = 100  #   громкость воспроизведения
 
     vlc_prg = ""
     os_name = platform.system()
@@ -183,9 +193,9 @@ def main(stdscr, autoplay):
     if autoplay > -1 and autoplay<len(stations):
         playing_index = autoplay
         # Запускаем  автоматическое проигрывание станции
-        # playing_index = current_row
+        
         vlc_process = subprocess.Popen(
-            [vlc_prg, "--intf", "dummy", stations[playing_index][1]],
+            [vlc_prg, "--intf", "rc", "--rc-host", "localhost:5000", stations[playing_index][1]],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -260,10 +270,10 @@ def main(stdscr, autoplay):
             status_line = h-3
             if playing_index >= 0:
                 if move_mode_playing:
-                    status_text = f"Сейчас играет: {stations[moving_index][0]}"
+                    status_text = f"Сейчас играет: {stations[moving_index][0]} ->  громкость {current_volume} из 512"
                 else:
                     if not move_mode:
-                        status_text = f"Сейчас играет: {stations[playing_index][0]}"
+                        status_text = f"Сейчас играет: {stations[playing_index][0]} ->  громкость {current_volume} из 512"
 
                 try:
                     stdscr.addstr(status_line, 0, status_text, curses.color_pair(2) | curses.A_BOLD)
@@ -287,7 +297,7 @@ def main(stdscr, autoplay):
             
 
             # Строка подсказки функц клавиш
-            help_line = "+:добавить | -: удалить | F2: сохранить |F3: переместить | F4: изменить | F5: загрузить |F10: выход "
+            help_line = " Ins: добавить | Del: удалить | F2: сохранить |F3: переместить | F4: изменить | F5: загрузить |F10: выход "
             help_line_f3 = " ↑: переместить вверх |  ↓: переместить вниз | Enter: закрепить перемешение  | Esc: отмена перемещения"
             title_x = max(0, w//2 - len(help_line)//2)
             try:
@@ -346,7 +356,7 @@ def main(stdscr, autoplay):
                     # Запускаем новую станцию
                     playing_index = current_row
                     vlc_process = subprocess.Popen(
-                        [vlc_prg, "--intf", "dummy", stations[current_row][1]],
+                        [vlc_prg, "--intf", "rc", "--rc-host", "localhost:5000", stations[current_row][1]],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                     )
@@ -507,11 +517,13 @@ def main(stdscr, autoplay):
                         stdscr.addstr(h-1, 0, error_msg, curses.A_BOLD | curses.color_pair(1))
                         stdscr.getch()
                 elif key == ord("+"):
-                    # увеличение громкости воспроизведения
-                    pass
+                    if playing_index >= 0:
+                        current_volume = min(current_volume + 10, 512)  # +10%
+                        set_vlc_volume(current_volume)
                 elif key == ord("-"):
-                    # уменьшение громкости воспроизведения
-                    pass
+                    if playing_index >= 0:
+                        current_volume = max(current_volume - 10, 0)  # -10%
+                        set_vlc_volume(current_volume)
 
         except KeyboardInterrupt:
             if vlc_process and vlc_process.poll() is None:
