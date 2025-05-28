@@ -104,6 +104,8 @@ def main(stdscr):
     playing_index = -1  # Индекс проигрываемой станции (-1 - ничего не играет)
     move_mode = False  # Флаг режима перемещения
     moving_index = -1  # Индекс перемещаемой станции
+    original_stations = ""
+    original_stations_index = -1
 
 
     vlc_prg = ""
@@ -257,6 +259,7 @@ def main(stdscr):
                 elif key == 27:  # ESC - отмена изменений
                     # Восстанавливаем исходный порядок
                     stations = original_stations.copy()
+                    # playing_index = original_stations_index
                     current_row = moving_index  # Возвращаем курсор на исходную позицию
                     move_mode = False
                     moving_index = -1
@@ -355,13 +358,11 @@ def main(stdscr):
                         stdscr.touchwin()
                         stdscr.refresh()
                 elif key == 267:
-                    # Вход/выход из режима перемещения
-                    move_mode = not move_mode
-                    if move_mode:
-                        moving_index = current_row
-                        original_stations = stations.copy()  # Сохраняем исходный порядок
-                    else:
-                        moving_index = -1
+                    # Вход в режим перемещения станции
+                    move_mode = True                    
+                    moving_index = current_row
+                    original_stations = stations.copy()  # Сохраняем исходный порядок
+                    
                 elif key == curses.KEY_F4:
                     # Редактирование текущей станции
                     if len(stations) > 0:
