@@ -8,6 +8,7 @@ import csv
 from curses import wrapper
 import os
 from datetime import datetime
+import click
 
 
 def load_stations(filename):
@@ -82,7 +83,8 @@ def text_field(stdscr, y, x, width, initial_text=""):
     return "".join(text)
 
 
-def main(stdscr):
+def main(stdscr, autoplay):
+
     # Инициализация цветов (перенесено внутрь main)
     curses.start_color()
     curses.use_default_colors()
@@ -107,7 +109,6 @@ def main(stdscr):
     original_stations = ""
     original_stations_index = -1
     move_mode_playing = False # перемещение станции по спику которая проигрывается
-
 
     vlc_prg = ""
     os_name = platform.system()
@@ -134,6 +135,16 @@ def main(stdscr):
             sys.exit(1)
 
     stdscr.keypad(True)
+
+    if autoplay > -1 and autoplay<len(stations):
+        playing_index = autoplay
+        # Запускаем  автоматическое проигрывание станции
+        # playing_index = current_row
+        vlc_process = subprocess.Popen(
+            [vlc_prg, "--intf", "dummy", stations[playing_index][1]],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
     while True:
         try:
@@ -431,6 +442,14 @@ def main(stdscr):
                 vlc_process.wait()
             break
 
+@click.command()
+@click.option('--autoplay', default=-1, help='Автопроигрывание номера заданной станции нумерация от 0')
+def _main(autoplay):
+    try:
+        stdscr = curses.initscr()
+        main(stdscr=stdscr, autoplay=autoplay)
+    finally:
+        curses.endwin()
 
 if __name__ == "__main__":
-    wrapper(main)
+    _main()
