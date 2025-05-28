@@ -506,6 +506,12 @@ def main(stdscr, autoplay):
                         error_msg = "Нет CSV файлов в текущей директории"
                         stdscr.addstr(h-1, 0, error_msg, curses.A_BOLD | curses.color_pair(1))
                         stdscr.getch()
+                elif key == ord("+"):
+                    # увеличение громкости воспроизведения
+                    pass
+                elif key == ord("-"):
+                    # уменьшение громкости воспроизведения
+                    pass
 
         except KeyboardInterrupt:
             if vlc_process and vlc_process.poll() is None:
