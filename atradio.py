@@ -106,6 +106,7 @@ def main(stdscr):
     moving_index = -1  # Индекс перемещаемой станции
     original_stations = ""
     original_stations_index = -1
+    move_mode_playing = False # перемещение станции по спику которая проигрывается
 
 
     vlc_prg = ""
@@ -203,7 +204,12 @@ def main(stdscr):
             # Строка состояния проигрывания
             status_line = h-3
             if playing_index >= 0:
-                status_text = f"Сейчас играет: {stations[playing_index][0]}"
+                if move_mode_playing:
+                    status_text = f"Сейчас играет: {stations[moving_index][0]}"
+                else:
+                    if not move_mode:
+                        status_text = f"Сейчас играет: {stations[playing_index][0]}"
+
                 try:
                     stdscr.addstr(status_line, 0, status_text, curses.color_pair(2) | curses.A_BOLD)
                 except:
@@ -246,16 +252,23 @@ def main(stdscr):
                     stations[moving_index], stations[moving_index-1] = stations[moving_index-1], stations[moving_index]
                     moving_index -= 1
                     current_row = moving_index
+                    if playing_index == moving_index: # когда перемещем станцию выше проигрывающую
+                        playing_index += 1
                 elif key == curses.KEY_DOWN and moving_index < len(stations)-1:
                     # Перемещаем станцию вниз
                     stations[moving_index], stations[moving_index+1] = stations[moving_index+1], stations[moving_index]
                     moving_index += 1
                     current_row = moving_index
+                    if playing_index == moving_index: # когда перемещем станцию ниже проигрывающую
+                        playing_index -= 1
                 elif key in [curses.KEY_ENTER, 10, 13]:
                     # Сохраняем изменения по Enter
                     save_stations(stations_file, stations)
+                    if move_mode_playing:
+                        playing_index = moving_index
                     move_mode = False
                     moving_index = -1
+                    move_mode_playing = False                    
                 elif key == 27:  # ESC - отмена изменений
                     # Восстанавливаем исходный порядок
                     stations = original_stations.copy()
@@ -263,6 +276,7 @@ def main(stdscr):
                     current_row = moving_index  # Возвращаем курсор на исходную позицию
                     move_mode = False
                     moving_index = -1
+                    move_mode_playing = False
             else:
                 if key == curses.KEY_UP and current_row > 0:
                     current_row -= 1
@@ -357,11 +371,16 @@ def main(stdscr):
                         del confirm_win
                         stdscr.touchwin()
                         stdscr.refresh()
-                elif key == 267:
-                    # Вход в режим перемещения станции
+                elif key == 267: 
+                    # Вход в режим перемещения станции F3
                     move_mode = True                    
                     moving_index = current_row
                     original_stations = stations.copy()  # Сохраняем исходный порядок
+                    print(f"{playing_index=}")
+                    print(f"{current_row=}")
+                    if playing_index == current_row:
+                        print("перемещаем то что проигрывается")
+                        move_mode_playing = True
                     
                 elif key == curses.KEY_F4:
                     # Редактирование текущей станции
