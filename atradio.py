@@ -362,8 +362,8 @@ def main(stdscr, autoplay):
                             vlc_process.wait()
                         playing_index = -1
                     break
-                elif key == ord('+'):
-                    # Добавление новой станции
+                elif key == 331:
+                    # Добавление новой станции Ins
                     stdscr.clear()
                     h, w = stdscr.getmaxyx()
                     
@@ -385,8 +385,8 @@ def main(stdscr, autoplay):
                     
                     # Обновляем текущую строку
                     current_row = len(stations) - 1
-                elif key == ord('-'):
-                # Удаление текущей станции с подтверждением
+                elif key == 330:
+                # Удаление текущей станции с подтверждением Del
                     if len(stations) > 0:
                         # Создаем окно подтверждения
                         confirm_win = curses.newwin(5, 50, h//2-2, w//2-25)
