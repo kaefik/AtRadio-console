@@ -5,13 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13.2"
 dependencies = [
+    "click>=8.2.1",
     "ffmpeg-python>=0.2.0",
     "pyaudio>=0.2.14",
     "pydub>=0.25.1",
     "pygame>=2.6.1",
     "python-vlc>=3.0.21203",
     "requests>=2.32.3",
-    
 ]
 [project.optional-dependencies]
 windows = ["windows-curses>=2.4.1"]
