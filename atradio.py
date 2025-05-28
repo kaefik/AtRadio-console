@@ -11,6 +11,7 @@ from datetime import datetime
 import click
 
 
+
 def load_stations(filename):
     stations = []
     with open(filename, mode='r', encoding='utf-8') as file:
@@ -82,6 +83,49 @@ def text_field(stdscr, y, x, width, initial_text=""):
     curses.curs_set(0)  # Скрываем курсор
     return "".join(text)
 
+
+def select_file_from_list(stdscr, files):
+    """Функция для выбора файла из списка"""
+    current_row = 0
+    offset = 0
+    
+    while True:
+        stdscr.clear()
+        h, w = stdscr.getmaxyx()
+        max_display = h - 4
+        
+        # Корректируем смещение для прокрутки
+        if current_row < offset:
+            offset = current_row
+        elif current_row >= offset + max_display:
+            offset = current_row - max_display + 1
+
+        # Отображаем заголовок
+        title = "Выберите файл для загрузки (Enter - выбрать, ESC - отмена)"
+        stdscr.addstr(0, w//2 - len(title)//2, title, curses.A_BOLD)
+        
+        # Отображаем список файлов
+        for idx in range(offset, min(offset + max_display, len(files))):
+            filename = files[idx]
+            y = idx - offset + 2
+            try:
+                if idx == current_row:
+                    stdscr.addstr(y, w//2 - len(filename)//2, filename, curses.A_REVERSE)
+                else:
+                    stdscr.addstr(y, w//2 - len(filename)//2, filename)
+            except curses.error:
+                pass
+
+        key = stdscr.getch()
+        
+        if key == curses.KEY_UP and current_row > 0:
+            current_row -= 1
+        elif key == curses.KEY_DOWN and current_row < len(files)-1:
+            current_row += 1
+        elif key in [curses.KEY_ENTER, 10, 13]:  # Enter - выбрать
+            return files[current_row]
+        elif key == 27:  # ESC - отмена
+            return None
 
 def main(stdscr, autoplay):
 
@@ -243,7 +287,7 @@ def main(stdscr, autoplay):
             
 
             # Строка подсказки функц клавиш
-            help_line = "+:добавить | -: удалить | F2: сохранить |F3: переместить | F4: изменить | F10: выход "
+            help_line = "+:добавить | -: удалить | F2: сохранить |F3: переместить | F4: изменить | F5: загрузить |F10: выход "
             help_line_f3 = " ↑: переместить вверх |  ↓: переместить вниз | Enter: закрепить перемешение  | Esc: отмена перемещения"
             title_x = max(0, w//2 - len(help_line)//2)
             try:
@@ -435,6 +479,33 @@ def main(stdscr, autoplay):
                     if new_filename and len(new_filename)>0:                        
                         filename = f"{new_filename}.csv"
                         save_stations(filename, stations)
+
+                elif key == curses.KEY_F5:  # Загрузка станций из файла
+                    # Получаем список CSV файлов в текущей директории
+                    files = [f for f in os.listdir() if f.endswith('.csv')]
+                    if files:
+                        selected_file = select_file_from_list(stdscr, files)
+                        if selected_file:
+                            try:
+                                new_stations = load_stations(selected_file)
+                                stations = new_stations
+                                save_stations(stations_file, stations)  # Сохраняем в основной файл
+                                current_row = 0  # Сбрасываем позицию курсора
+                                playing_index = -1  # Сбрасываем воспроизведение
+                                if vlc_process and vlc_process.poll() is None:
+                                    vlc_process.terminate()
+                                    vlc_process.wait()
+                            except Exception as e:
+                                # Показываем сообщение об ошибке
+                                h, w = stdscr.getmaxyx()
+                                error_msg = f"Ошибка загрузки файла: {str(e)}"
+                                stdscr.addstr(h-1, 0, error_msg, curses.A_BOLD | curses.color_pair(1))
+                                stdscr.getch()
+                    else:
+                        h, w = stdscr.getmaxyx()
+                        error_msg = "Нет CSV файлов в текущей директории"
+                        stdscr.addstr(h-1, 0, error_msg, curses.A_BOLD | curses.color_pair(1))
+                        stdscr.getch()
 
         except KeyboardInterrupt:
             if vlc_process and vlc_process.poll() is None:
