@@ -47,9 +47,114 @@ def vlc_open(vlc_prg, name_station:str):
         stderr=subprocess.PIPE,
     )
 
+def draw_header(stdscr, title, sub_title):
+    h, w = stdscr.getmaxyx()
+    title_x = max(0, w//2 - len(title)//2)
+    stdscr.addstr(0, title_x, title, curses.A_BOLD)
+    sub_title_x = max(0, w//2 - len(sub_title)//2)
+    stdscr.addstr(1, sub_title_x, sub_title, curses.A_DIM)
+
+def draw_stations_list(stdscr, stations, current_row, offset, playing_index, move_mode, max_display):
+    h, w = stdscr.getmaxyx()
+    for idx in range(offset, min(offset + max_display, len(stations))):
+        name, url = stations[idx]
+        x = max(0, w//2 - len(name)//2)
+        y = idx - offset + 3
+        
+        try:
+            if idx == current_row:
+                if move_mode:
+                    try:
+                        stdscr.addstr(y, x, name, curses.color_pair(1) | curses.A_BLINK)
+                    except:
+                        stdscr.addstr(y, x, name, curses.A_REVERSE | curses.A_BLINK)
+                else:
+                    try:
+                        stdscr.addstr(y, x, name, curses.color_pair(1))
+                    except:
+                        stdscr.addstr(y, x, name, curses.A_REVERSE)
+            elif idx == playing_index:
+                try:
+                    stdscr.addstr(y, x, name, curses.color_pair(2) | curses.A_BOLD)
+                except:
+                    stdscr.addstr(y, x, name, curses.A_BOLD)
+            else:
+                stdscr.addstr(y, x, name)
+
+            if idx == playing_index:
+                try:
+                    stdscr.addstr(y, x-2, "▶ ")
+                except:
+                    pass
+        except curses.error:
+            pass
+
+def draw_status_lines(stdscr, stations, current_row, playing_index, current_volume, move_mode, move_mode_playing, moving_index):
+    h, w = stdscr.getmaxyx()
+    
+    # Строка состояния проигрывания
+    status_line = h-3
+    if playing_index >= 0:
+        if move_mode_playing:
+            status_text = f"Сейчас играет: {stations[moving_index][0]} -> громкость {current_volume} из 512"
+        else:
+            if not move_mode:
+                status_text = f"Сейчас играет: {stations[playing_index][0]} -> громкость {current_volume} из 512"
+
+        try:
+            stdscr.addstr(status_line, 0, status_text, curses.color_pair(2) | curses.A_BOLD)
+        except:
+            stdscr.addstr(status_line, 0, status_text, curses.A_BOLD)
+    else:
+        stdscr.addstr(status_line, 0, "Готов к проигрыванию", curses.A_DIM)
+
+    # Статусная строка (информация о выбранной станции)
+    status = f"Выбрано: {stations[current_row][0]} [{current_row + 1}/{len(stations)}]"
+    url_display = stations[current_row][1]
+    max_url_len = w - len(status) - 2
+    if max_url_len > 0 and len(url_display) > max_url_len:
+        url_display = url_display[:max_url_len-3] + "..."
+    
+    try:
+        stdscr.addstr(h-2, 0, status)
+        stdscr.addstr(h-2, len(status)+1, url_display, curses.A_DIM)
+    except curses.error:
+        pass
+
+def draw_help_line(stdscr, move_mode):
+    h, w = stdscr.getmaxyx()
+    help_line = " Ins: добавить | Del: удалить | F2: сохранить |F3: переместить | F4: изменить | F5: загрузить |F10: выход "
+    help_line_f3 = " ↑: переместить вверх | ↓: переместить вниз | Enter: закрепить перемешение | Esc: отмена перемещения"
+    title_x = max(0, w//2 - len(help_line)//2)
+    try:
+        if move_mode:
+            stdscr.addstr(h-1, title_x, help_line_f3)                
+        else:
+            stdscr.addstr(h-1, title_x, help_line)                
+    except curses.error:
+        pass
+
+def full_redraw(stdscr, stations, current_row, offset, playing_index, move_mode, move_mode_playing, current_volume, moving_index):
+    stdscr.clear()
+    h, w = stdscr.getmaxyx()
+    
+    # Проверяем минимальный размер терминала
+    if h < 5 or w < 40:
+        stdscr.addstr(0, 0, "Terminal too small! Please resize.", curses.A_BOLD)
+        stdscr.refresh()
+        return False
+    
+    max_display = h - 6
+    
+    draw_header(stdscr, "Список радиостанций", "(Enter - играть, ESC - остановить, q - выход)")
+    draw_stations_list(stdscr, stations, current_row, offset, playing_index, move_mode, max_display)
+    draw_status_lines(stdscr, stations, current_row, playing_index, current_volume, move_mode, move_mode_playing, moving_index)
+    draw_help_line(stdscr, move_mode)
+    
+    stdscr.refresh()
+    return True
 
 def main(stdscr, autoplay):
-
     # Инициализация цветов (перенесено внутрь main)
     curses.start_color()
     curses.use_default_colors()
@@ -71,8 +176,7 @@ def main(stdscr, autoplay):
     playing_index = -1  # Индекс проигрываемой станции (-1 - ничего не играет)
     move_mode = False  # Флаг режима перемещения
     moving_index = -1  # Индекс перемещаемой станции
-    original_stations = ""
-    original_stations_index = -1
+    original_stations = []
     move_mode_playing = False # перемещение станции по спику которая проигрывается
     current_volume = 100  #   громкость воспроизведения
 
@@ -107,153 +211,62 @@ def main(stdscr, autoplay):
         # Запускаем  автоматическое проигрывание станции
         vlc_process = vlc_open(vlc_prg, stations[playing_index][1])
 
+    # Флаг, указывающий на необходимость полной перерисовки
+    need_redraw = True
+    
     while True:
         try:
-            stdscr.clear()
-            h, w = stdscr.getmaxyx()
-
-            # Проверяем минимальный размер терминала
-            if h < 5 or w < 40:
-                stdscr.addstr(0, 0, "Terminal too small! Please resize.", curses.A_BOLD)
-                stdscr.refresh()
-                stdscr.getch()
-                continue
-
-            max_display = h - 6  # -4 для заголовка, статуса и строки состояния
-
-            # Корректируем смещение для прокрутки
-            if current_row < offset:
-                offset = current_row
-            elif current_row >= offset + max_display:
-                offset = current_row - max_display + 1
-
-            # Отображаем заголовок
-            title = "Список радиостанций"
-            sub_title = "(Enter - играть, ESC - остановить, q - выход)"
-            title_x = max(0, w//2 - len(title)//2)
-            stdscr.addstr(0, title_x, title, curses.A_BOLD)
-            sub_title_x = max(0, w//2 - len(sub_title)//2)
-            stdscr.addstr(1, sub_title_x, sub_title, curses.A_DIM)
-
-            # Отображаем список станций
-            for idx in range(offset, min(offset + max_display, len(stations))):
-                name, url = stations[idx]
-                x = max(0, w//2 - len(name)//2)
-                y = idx - offset + 3
-                
-                try:
-                    if idx == current_row:
-                        # Выделенный элемент
-                        if move_mode:
-                            # В режиме перемещения - особое выделение
-                            try:
-                                stdscr.addstr(y, x, name, curses.color_pair(1) | curses.A_BLINK)
-                            except:
-                                stdscr.addstr(y, x, name, curses.A_REVERSE | curses.A_BLINK)
-                        else:
-                            try:
-                                stdscr.addstr(y, x, name, curses.color_pair(1))
-                            except:
-                                stdscr.addstr(y, x, name, curses.A_REVERSE)
-                    elif idx == playing_index:
-                        # Играющая станция - жирный или цвет
-                        try:
-                            stdscr.addstr(y, x, name, curses.color_pair(2) | curses.A_BOLD)
-                        except:
-                            stdscr.addstr(y, x, name, curses.A_BOLD)
-                    else:
-                        stdscr.addstr(y, x, name)
-
-                    # Добавляем значок проигрывания
-                    if idx == playing_index:
-                        try:
-                            stdscr.addstr(y, x-2, "▶ ")
-                        except:
-                            pass
-                except curses.error:
-                    pass
-
-            # Строка состояния проигрывания
-            status_line = h-3
-            if playing_index >= 0:
-                if move_mode_playing:
-                    status_text = f"Сейчас играет: {stations[moving_index][0]} ->  громкость {current_volume} из 512"
-                else:
-                    if not move_mode:
-                        status_text = f"Сейчас играет: {stations[playing_index][0]} ->  громкость {current_volume} из 512"
-
-                try:
-                    stdscr.addstr(status_line, 0, status_text, curses.color_pair(2) | curses.A_BOLD)
-                except:
-                    stdscr.addstr(status_line, 0, status_text, curses.A_BOLD)
-            else:
-                stdscr.addstr(status_line, 0, "Готов к проигрыванию", curses.A_DIM)
-
-            # Статусная строка (информация о выбранной станции)
-            status = f"Выбрано: {stations[current_row][0]} [{current_row + 1}/{len(stations)}]"
-            url_display = stations[current_row][1]
-            max_url_len = w - len(status) - 2
-            if max_url_len > 0 and len(url_display) > max_url_len:
-                url_display = url_display[:max_url_len-3] + "..."
+            if need_redraw:
+                if not full_redraw(stdscr, stations, current_row, offset, playing_index, move_mode, move_mode_playing, current_volume, moving_index):
+                    continue
+                need_redraw = False
             
-            try:
-                stdscr.addstr(h-2, 0, status)
-                stdscr.addstr(h-2, len(status)+1, url_display, curses.A_DIM)
-            except curses.error:
-                pass
-            
-
-            # Строка подсказки функц клавиш
-            help_line = " Ins: добавить | Del: удалить | F2: сохранить |F3: переместить | F4: изменить | F5: загрузить |F10: выход "
-            help_line_f3 = " ↑: переместить вверх |  ↓: переместить вниз | Enter: закрепить перемешение  | Esc: отмена перемещения"
-            title_x = max(0, w//2 - len(help_line)//2)
-            try:
-                if move_mode:
-                    stdscr.addstr(h-1, title_x, help_line_f3)                
-                else:
-                    stdscr.addstr(h-1, title_x, help_line)                
-            except curses.error:
-                pass
-
             key = stdscr.getch()
-
-             # В режиме перемещения обрабатываем клавиши вверх/вниз
+            need_redraw = True  # По умолчанию считаем, что перерисовка нужна
+            
+            # В режиме перемещения обрабатываем клавиши вверх/вниз
             if move_mode:
                 if key == curses.KEY_UP and moving_index > 0:
-                    # Перемещаем станцию вверх
                     stations[moving_index], stations[moving_index-1] = stations[moving_index-1], stations[moving_index]
                     moving_index -= 1
                     current_row = moving_index
-                    if playing_index == moving_index: # когда перемещем станцию выше проигрывающую
+                    if playing_index == moving_index:
                         playing_index += 1
                 elif key == curses.KEY_DOWN and moving_index < len(stations)-1:
-                    # Перемещаем станцию вниз
                     stations[moving_index], stations[moving_index+1] = stations[moving_index+1], stations[moving_index]
                     moving_index += 1
                     current_row = moving_index
-                    if playing_index == moving_index: # когда перемещем станцию ниже проигрывающую
+                    if playing_index == moving_index:
                         playing_index -= 1
                 elif key in [curses.KEY_ENTER, 10, 13]:
-                    # Сохраняем изменения по Enter
                     save_stations(stations_file, stations)
                     if move_mode_playing:
                         playing_index = moving_index
                     move_mode = False
                     moving_index = -1
                     move_mode_playing = False                    
-                elif key == 27:  # ESC - отмена изменений
-                    # Восстанавливаем исходный порядок
+                elif key == 27:
                     stations = original_stations.copy()
-                    # playing_index = original_stations_index
-                    current_row = moving_index  # Возвращаем курсор на исходную позицию
+                    current_row = moving_index
                     move_mode = False
                     moving_index = -1
                     move_mode_playing = False
+                else:
+                    need_redraw = False  # Неизвестная клавиша в режиме перемещения
             else:
                 if key == curses.KEY_UP and current_row > 0:
                     current_row -= 1
+                    # Частичная перерисовка только списка станций и строк состояния
+                    h, w = stdscr.getmaxyx()
+                    draw_stations_list(stdscr, stations, current_row, offset, playing_index, move_mode, h-6)
+                    draw_status_lines(stdscr, stations, current_row, playing_index, current_volume, move_mode, move_mode_playing, moving_index)
+                    need_redraw = False
                 elif key == curses.KEY_DOWN and current_row < len(stations)-1:
                     current_row += 1
+                    h, w = stdscr.getmaxyx()
+                    draw_stations_list(stdscr, stations, current_row, offset, playing_index, move_mode, h-6)
+                    draw_status_lines(stdscr, stations, current_row, playing_index, current_volume, move_mode, move_mode_playing, moving_index)
+                    need_redraw = False
                 elif key == curses.KEY_ENTER or key in [10, 13]:
                     # Останавливаем предыдущее проигрывание, если есть
                     if vlc_process and vlc_process.poll() is None:
@@ -303,7 +316,7 @@ def main(stdscr, autoplay):
                             # Обновляем текущую строку
                             current_row = len(stations) - 1
                 elif key == 330:
-                # Удаление текущей станции с подтверждением Del
+                    # Удаление текущей станции с подтверждением Del
                     if len(stations) > 0:
                         choice = show_confirmation(stdscr, f"Удалить станцию: {stations[current_row][0]}?")
                         if choice == 0:  # Да
@@ -324,18 +337,13 @@ def main(stdscr, autoplay):
                             # Корректируем индекс играющей станции
                             if playing_index > current_row:
                                 playing_index -= 1
-
-                        stdscr.touchwin()
-                        stdscr.refresh()
                 elif key == 267: 
                     # Вход в режим перемещения станции F3
                     move_mode = True                    
                     moving_index = current_row
                     original_stations = stations.copy()  # Сохраняем исходный порядок
                     if playing_index == current_row:
-                        print("перемещаем то что проигрывается")
                         move_mode_playing = True
-                    
                 elif key == curses.KEY_F4:
                     # Редактирование текущей станции
                     if len(stations) > 0:
@@ -358,7 +366,6 @@ def main(stdscr, autoplay):
                         stdscr.clear()
                         prompt = "Редактирование URL (Enter - подтвердить, Esc - отмена):"
                         stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)
-                        #stdscr.addstr(h//2, w//2 - len(new_url)//2, new_url, curses.A_BOLD)
                         width= len(new_url) if len(new_url)>50 else 50
                         new_url = text_field(stdscr, h//2, w//2 - len(new_url)//2, width, new_url)
 
@@ -378,7 +385,6 @@ def main(stdscr, autoplay):
                     if new_filename and len(new_filename)>0:                        
                         filename = f"{new_filename}.csv"
                         save_stations(filename, stations)
-
                 elif key == curses.KEY_F5:  # Загрузка станций из файла
                     # Получаем список CSV файлов в текущей директории
                     files = [f for f in os.listdir() if f.endswith('.csv')]
@@ -409,10 +415,20 @@ def main(stdscr, autoplay):
                     if playing_index >= 0:
                         current_volume = min(current_volume + 10, 512)  # +10%
                         set_vlc_volume(current_volume)
+                        # Обновляем только строку состояния
+                        h, w = stdscr.getmaxyx()
+                        draw_status_lines(stdscr, stations, current_row, playing_index, current_volume, move_mode, move_mode_playing, moving_index)
+                        need_redraw = False
                 elif key == ord("-"):
                     if playing_index >= 0:
                         current_volume = max(current_volume - 10, 0)  # -10%
                         set_vlc_volume(current_volume)
+                        # Обновляем только строку состояния
+                        h, w = stdscr.getmaxyx()
+                        draw_status_lines(stdscr, stations, current_row, playing_index, current_volume, move_mode, move_mode_playing, moving_index)
+                        need_redraw = False
+                else:
+                    need_redraw = False  # Неизвестная клавиша - не перерисовываем
 
         except KeyboardInterrupt:
             if vlc_process and vlc_process.poll() is None:
