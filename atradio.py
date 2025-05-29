@@ -287,19 +287,21 @@ def main(stdscr, autoplay):
                     stdscr.addstr(name_y, name_x, name_prompt)
                     name = text_field(stdscr, name_y, name_x+len(name_prompt), 50, "")
                     
-                    # Получаем URL станции
-                    url_prompt = "URL станции: "
-                    url_y = h//2 + 1
-                    url_x = w//2 - len(url_prompt)//2
-                    stdscr.addstr(url_y, url_x, url_prompt)
-                    url = text_field(stdscr, url_y, url_x+len(url_prompt), 50, "")
-                    
-                    # Добавляем новую станцию
-                    stations.append((name, url))
-                    save_stations(stations_file, stations)
-                    
-                    # Обновляем текущую строку
-                    current_row = len(stations) - 1
+                    if name:
+                        # Получаем URL станции
+                        url_prompt = "URL станции: "
+                        url_y = h//2 + 1
+                        url_x = w//2 - len(url_prompt)//2
+                        stdscr.addstr(url_y, url_x, url_prompt)
+                        url = text_field(stdscr, url_y, url_x+len(url_prompt), 50, "")
+                        
+                        if url:
+                            # Добавляем новую станцию
+                            stations.append((name, url))
+                            save_stations(stations_file, stations)
+                            
+                            # Обновляем текущую строку
+                            current_row = len(stations) - 1
                 elif key == 330:
                 # Удаление текущей станции с подтверждением Del
                     if len(stations) > 0:
