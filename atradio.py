@@ -356,7 +356,7 @@ def main(stdscr, autoplay):
                     # Запускаем новую станцию
                     playing_index = current_row
                     vlc_process = subprocess.Popen(
-                        [vlc_prg, "--intf", "rc", "--rc-host", "localhost:5000", stations[current_row][1]],
+                        [vlc_prg, "--intf", "dummy", "--rc-host", "localhost:5000", stations[current_row][1]],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                     )
