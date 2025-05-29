@@ -284,13 +284,15 @@ def main(stdscr, autoplay):
                     name_prompt = "Название станции: "
                     name_y = h//2 - 1
                     name_x = w//2 - len(name_prompt)//2
-                    name = get_input(stdscr, name_prompt, name_y, name_x)
+                    stdscr.addstr(name_y, name_x, name_prompt)
+                    name = text_field(stdscr, name_y, name_x+len(name_prompt), 50, "")
                     
                     # Получаем URL станции
                     url_prompt = "URL станции: "
                     url_y = h//2 + 1
                     url_x = w//2 - len(url_prompt)//2
-                    url = get_input(stdscr, url_prompt, url_y, url_x)
+                    stdscr.addstr(url_y, url_x, url_prompt)
+                    url = text_field(stdscr, url_y, url_x+len(url_prompt), 50, "")
                     
                     # Добавляем новую станцию
                     stations.append((name, url))
