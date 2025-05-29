@@ -332,8 +332,6 @@ def main(stdscr, autoplay):
                     move_mode = True                    
                     moving_index = current_row
                     original_stations = stations.copy()  # Сохраняем исходный порядок
-                    print(f"{playing_index=}")
-                    print(f"{current_row=}")
                     if playing_index == current_row:
                         print("перемещаем то что проигрывается")
                         move_mode_playing = True
