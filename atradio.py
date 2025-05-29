@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 import click
 import telnetlib
-from ui.ui_interface import text_field, select_file_from_list, get_input
+from ui.ui_interface import text_field, select_file_from_list, get_input, show_confirmation
 
 
 def set_vlc_volume(volume: int):
@@ -301,42 +301,26 @@ def main(stdscr, autoplay):
                 elif key == 330:
                 # Удаление текущей станции с подтверждением Del
                     if len(stations) > 0:
-                        # Создаем окно подтверждения
-                        confirm_win = curses.newwin(5, 50, h//2-2, w//2-25)
-                        confirm_win.border()
-                        confirm_win.addstr(1, 2, f"Удалить станцию: {stations[current_row][0]}?")
-                        confirm_win.addstr(3, 10, "[Y] Да    [N] Нет", curses.A_BOLD)
-                        confirm_win.refresh()
-                        
-                        # Ждем ответа пользователя
-                        while True:
-                            confirm_key = confirm_win.getch()
-                            if confirm_key in [ord('y'), ord('Y')]:
-                                # Останавливаем воспроизведение, если удаляем играющую станцию
-                                if playing_index == current_row:
-                                    if vlc_process and vlc_process.poll() is None:
-                                        vlc_process.terminate()
-                                        vlc_process.wait()
-                                    playing_index = -1
-                                
-                                # Удаляем станцию
-                                del stations[current_row]
-                                save_stations(stations_file, stations)
-                                
-                                # Корректируем позицию курсора
-                                if current_row >= len(stations):
-                                    current_row = max(0, len(stations) - 1)
-                                # Корректируем индекс играющей станции
-                                if playing_index > current_row:
-                                    playing_index -= 1
-                                break
-                            elif confirm_key in [ord('n'), ord('N'), 27]:  # 27 - ESC
-                                break
-                        
-                        # Закрываем окно подтверждения
-                        confirm_win.clear()
-                        confirm_win.refresh()
-                        del confirm_win
+                        choice = show_confirmation(stdscr, f"Удалить станцию: {stations[current_row][0]}?")
+                        if choice == 0:  # Да
+                            # Останавливаем воспроизведение, если удаляем играющую станцию
+                            if playing_index == current_row:
+                                if vlc_process and vlc_process.poll() is None:
+                                    vlc_process.terminate()
+                                    vlc_process.wait()
+                                playing_index = -1
+                            
+                            # Удаляем станцию
+                            del stations[current_row]
+                            save_stations(stations_file, stations)
+                            
+                            # Корректируем позицию курсора
+                            if current_row >= len(stations):
+                                current_row = max(0, len(stations) - 1)
+                            # Корректируем индекс играющей станции
+                            if playing_index > current_row:
+                                playing_index -= 1
+
                         stdscr.touchwin()
                         stdscr.refresh()
                 elif key == 267: 
