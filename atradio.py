@@ -39,6 +39,14 @@ def save_stations(filename, stations):
             writer.writerow([name, url])
 
 
+def vlc_open(vlc_prg, name_station:str):
+    # запуск процесса vlc
+    return subprocess.Popen(
+        [vlc_prg, "--intf", "dummy", "--rc-host", "localhost:5000", name_station],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
 
 def main(stdscr, autoplay):
 
@@ -97,12 +105,7 @@ def main(stdscr, autoplay):
     if autoplay > -1 and autoplay<len(stations):
         playing_index = autoplay
         # Запускаем  автоматическое проигрывание станции
-        
-        vlc_process = subprocess.Popen(
-            [vlc_prg, "--intf", "rc", "--rc-host", "localhost:5000", stations[playing_index][1]],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        vlc_process = vlc_open(vlc_prg, stations[playing_index][1])
 
     while True:
         try:
@@ -259,11 +262,7 @@ def main(stdscr, autoplay):
                     
                     # Запускаем новую станцию
                     playing_index = current_row
-                    vlc_process = subprocess.Popen(
-                        [vlc_prg, "--intf", "dummy", "--rc-host", "localhost:5000", stations[current_row][1]],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                    )
+                    vlc_process = vlc_open(vlc_prg, stations[current_row][1])
                 elif key == 27:  # ESC - остановить проигрывание
                     if vlc_process and vlc_process.poll() is None:
                         vlc_process.terminate()
