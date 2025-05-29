@@ -98,3 +98,80 @@ def select_file_from_list(stdscr, files):
             return files[current_row]
         elif key == 27:  # ESC - отмена
             return None
+
+
+def show_confirmation(stdscr, message, options=["Да", "Нет"], default=0):
+    """
+    Универсальная функция подтверждения с выбором вариантов.
+    
+    Параметры:
+    - stdscr: главное окно curses
+    - message: сообщение для подтверждения
+    - options: список вариантов ответа (по умолчанию ["Да", "Нет"])
+    - default: индекс выбранного по умолчанию варианта
+    
+    Возвращает:
+    - Индекс выбранного варианта или None, если отмена (ESC)
+    """
+    h, w = stdscr.getmaxyx()
+    win_width = 50
+    win_height = 5
+    confirm_win = curses.newwin(win_height, win_width, h//2-2, w//2-25)
+    confirm_win.keypad(True)
+    
+    current_choice = default
+    result = None
+    
+    while True:
+        confirm_win.border()
+        # Центрируем сообщение
+        msg_x = max(2, (win_width - len(message)) // 2)
+        confirm_win.addstr(1, msg_x, message[:win_width-4])  # Обрезаем слишком длинные сообщения
+        
+        # Собираем варианты с подсветкой текущего выбора
+        options_text = []
+        for i, option in enumerate(options):
+            if i == current_choice:
+                options_text.append(f"[{option}]")
+            else:
+                options_text.append(f" {option} ")
+        
+        # Собираем все варианты в одну строку с пробелами между ними
+        options_line = "   ".join(options_text)
+        # Вычисляем позицию для центрирования
+        options_x = max(0, (win_width - len(options_line)) // 2)
+        
+        confirm_win.addstr(3, options_x, options_line, curses.A_BOLD)
+        confirm_win.refresh()
+        
+        key = confirm_win.getch()
+        
+        if key in [ord('\t')]:
+            current_choice = (current_choice + 1) % len(options)
+        elif key in [curses.KEY_LEFT, curses.KEY_RIGHT]:
+            if key == curses.KEY_LEFT:
+                current_choice = max(0, current_choice - 1)
+            else:
+                current_choice = min(len(options)-1, current_choice + 1)
+        elif key in [ord('\n'), ord('\r')]:
+            result = current_choice
+            break
+        elif key == 27:  # ESC - отмена
+            result = None
+            break
+        elif len(options) == 2 and key in [ord('y'), ord('Y'), ord('д'), ord('Д')]:
+            result = 0
+            break
+        elif len(options) == 2 and key in [ord('n'), ord('N'), ord('т'), ord('Т')]:
+            result = 1
+            break
+        elif key >= ord('1') and key <= ord(str(len(options))):
+            choice = key - ord('1')
+            if choice < len(options):
+                result = choice
+                break
+    
+    confirm_win.clear()
+    confirm_win.refresh()
+    del confirm_win
+    return result
