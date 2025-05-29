@@ -33,7 +33,7 @@ def text_field(stdscr, y, x, width, initial_text=""):
         elif key == 27:  # ESC - отмена
             return None
             break
-        elif key == curses.KEY_BACKSPACE or key == 127:
+        elif key in [curses.KEY_BACKSPACE, 127, 8]:
             if cursor_pos > 0:
                 text.pop(cursor_pos-1)
                 cursor_pos -= 1
