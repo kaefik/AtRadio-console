@@ -298,7 +298,7 @@ def main(stdscr, autoplay):
                     name_y = h//2 - 1
                     name_x = w//2 - len(name_prompt)//2
                     stdscr.addstr(name_y, name_x, name_prompt)
-                    name = text_field(stdscr, name_y, name_x+len(name_prompt), 50, "")
+                    name = text_field(stdscr, name_y, name_x+len(name_prompt), 50, "", russian=True)
                     
                     if name and name.strip():
                         # Получаем URL станции
