@@ -300,7 +300,7 @@ def main(stdscr, autoplay):
                     stdscr.addstr(name_y, name_x, name_prompt)
                     name = text_field(stdscr, name_y, name_x+len(name_prompt), 50, "")
                     
-                    if name:
+                    if name and name.strip():
                         # Получаем URL станции
                         url_prompt = "URL станции: "
                         url_y = h//2 + 1
@@ -308,9 +308,9 @@ def main(stdscr, autoplay):
                         stdscr.addstr(url_y, url_x, url_prompt)
                         url = text_field(stdscr, url_y, url_x+len(url_prompt), 50, "")
                         
-                        if url:
+                        if url and url.strip():
                             # Добавляем новую станцию
-                            stations.append((name, url))
+                            stations.append((name.strip(), url.strip()))
                             save_stations(stations_file, stations)
                             
                             # Обновляем текущую строку
