@@ -10,9 +10,10 @@ def get_input(stdscr, prompt, y, x):
     return input_str
 
 
-def text_field(stdscr, y, x, width, initial_text=""):
+def text_field(stdscr, y, x, width, initial_text="", russian=False):
     """
-    если нажали  Esc, то возвращается None,  иначе возвращается строка
+    если нажали Esc, то возвращается None, иначе возвращается строка
+    russian: если True, разрешает ввод русских букв
     """
     text = list(initial_text)
     cursor_pos = len(text)
@@ -32,7 +33,6 @@ def text_field(stdscr, y, x, width, initial_text=""):
             break
         elif key == 27:  # ESC - отмена
             return None
-            break
         elif key in [curses.KEY_BACKSPACE, 127, 8]:
             if cursor_pos > 0:
                 text.pop(cursor_pos-1)
@@ -48,9 +48,18 @@ def text_field(stdscr, y, x, width, initial_text=""):
             cursor_pos = 0
         elif key == curses.KEY_END:
             cursor_pos = len(text)
-        elif 32 <= key <= 126:  # Печатные символы
+        elif 32 <= key <= 126:  # Стандартные печатные символы ASCII
             text.insert(cursor_pos, chr(key))
             cursor_pos += 1
+        elif russian and key >= 1024:  # Русские символы в curses (обычно >= 1024)
+            try:
+                char = chr(key)
+                # Проверяем, что это действительно русская буква (может потребоваться уточнение)
+                if char.isalpha() and ord('а') <= key <= ord('я') or ord('А') <= key <= ord('Я'):
+                    text.insert(cursor_pos, char)
+                    cursor_pos += 1
+            except ValueError:
+                pass
     
     curses.curs_set(0)  # Скрываем курсор
     return "".join(text)
