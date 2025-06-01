@@ -1,4 +1,5 @@
 import curses
+import re
 
 
 def get_input(stdscr, prompt, y, x):
@@ -269,3 +270,39 @@ def show_confirmation(stdscr, message, options=["Да", "Нет"], default=0):
     confirm_win.refresh()
     del confirm_win
     return result
+
+
+def is_valid_url(url: str) -> bool:
+    """Проверяет, является ли строка валидным URL."""
+    # Простая проверка URL (можно расширить при необходимости)
+    url_pattern = re.compile(
+        r'^(https?|ftp)://'  # http://, https:// или ftp://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # домен...
+        r'localhost|'  # или localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...или IP
+        r'(?::\d+)?'  # необязательный порт
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+    
+    return re.match(url_pattern, url) is not None
+
+def get_valid_url(stdscr, y, x, max_len, initial_text=""):
+    """Запрашивает URL с проверкой корректности, повторяя ввод при ошибке"""
+    while True:
+        # Очищаем строку с предыдущим сообщением об ошибке
+        stdscr.addstr(y+1, x, " " * 50)  # Очищаем строку под полем ввода
+        
+        # Получаем URL от пользователя
+        url = text_field_unicode(stdscr, y, x, max_len, initial_text)
+        
+        # Если пользователь нажал Esc (или пустая строка)
+        if not url:
+            return None
+        
+        # Проверяем корректность URL
+        if is_valid_url(url.strip()):
+            return url.strip()
+        else:
+            error_msg = "Некорректный URL! Пример: http://example.com"
+            stdscr.addstr(y+1, x, error_msg, curses.color_pair(1))
+            stdscr.getch()
+            stdscr.refresh()
