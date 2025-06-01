@@ -52,16 +52,101 @@ def text_field(stdscr, y, x, width, initial_text="", russian=False):
             text.insert(cursor_pos, chr(key))
             cursor_pos += 1
         elif russian and key >= 1024:  # Русские символы в curses (обычно >= 1024)
+            print(f"{key=}")
             try:
                 char = chr(key)
                 # Проверяем, что это действительно русская буква (может потребоваться уточнение)
-                if char.isalpha() and ord('а') <= key <= ord('я') or ord('А') <= key <= ord('Я'):
+                if char.isalpha():
                     text.insert(cursor_pos, char)
                     cursor_pos += 1
             except ValueError:
                 pass
     
     curses.curs_set(0)  # Скрываем курсор
+    return "".join(text)
+
+
+def text_field_unicode(stdscr, y, x, width, initial_text="", russian=False):
+    """
+    Версия с использованием get_wch() для лучшей поддержки Unicode
+    """
+    text = list(initial_text)
+    cursor_pos = len(text)
+    curses.curs_set(1)
+    
+    while True:
+        # Отрисовываем текущий текст
+        stdscr.addstr(y, x, " " * width)
+        display_text = "".join(text)[:width]
+        try:
+            stdscr.addstr(y, x, display_text)
+        except curses.error:
+            pass
+        
+        stdscr.move(y, x + min(cursor_pos, width-1))
+        
+        try:
+            # Используем get_wch() для Unicode символов
+            if hasattr(stdscr, 'get_wch'):
+                key = stdscr.get_wch()
+            else:
+                key = stdscr.getch()
+        except curses.error:
+            continue
+        
+        # Обработка специальных клавиш (числовые коды)
+        if isinstance(key, int):
+            if key in (curses.KEY_ENTER, 10, 13):
+                break
+            elif key == 27:  # ESC
+                return None
+            elif key in [curses.KEY_BACKSPACE, 127, 8]:
+                if cursor_pos > 0:
+                    text.pop(cursor_pos-1)
+                    cursor_pos -= 1
+            elif key == curses.KEY_DC:
+                if cursor_pos < len(text):
+                    text.pop(cursor_pos)
+            elif key == curses.KEY_LEFT:
+                cursor_pos = max(0, cursor_pos - 1)
+            elif key == curses.KEY_RIGHT:
+                cursor_pos = min(len(text), cursor_pos + 1)
+            elif key == curses.KEY_HOME:
+                cursor_pos = 0
+            elif key == curses.KEY_END:
+                cursor_pos = len(text)
+            elif 32 <= key <= 126:
+                text.insert(cursor_pos, chr(key))
+                cursor_pos += 1
+        else:
+            # Обработка Unicode символов и специальных клавиш как строк
+            if isinstance(key, str):
+                # Проверяем специальные клавиши, которые могут прийти как строки
+                if key == '\n' or key == '\r':  # Enter как строка
+                    break
+                elif key == '\x1b':  # ESC как строка
+                    return None
+                elif key == '\x7f' or key == '\b':  # Backspace как строка
+                    if cursor_pos > 0:
+                        text.pop(cursor_pos-1)
+                        cursor_pos -= 1
+                elif len(key) == 1:
+                    # Обычные символы
+                    if not russian:
+                        # Только ASCII символы
+                        if 32 <= ord(key) <= 126:
+                            text.insert(cursor_pos, key)
+                            cursor_pos += 1
+                    else:
+                        # Разрешаем кириллицу и другие символы
+                        if (32 <= ord(key) <= 126 or  # ASCII печатные
+                            'а' <= key <= 'я' or 'А' <= key <= 'Я' or 
+                            key in 'ёЁ' or 
+                            (key.isalnum() and ord(key) > 127)):  # Другие Unicode буквы
+                            text.insert(cursor_pos, key)
+                            cursor_pos += 1
+    
+    curses.curs_set(0)
     return "".join(text)
 
 
