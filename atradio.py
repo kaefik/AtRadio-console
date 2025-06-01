@@ -64,7 +64,7 @@ def main(stdscr, autoplay):
         pass
     
     curses.curs_set(0)  # Скрываем курсор
-    stations_file = 'data/ru_radio_stations_tatar.csv'
+    stations_file = 'data/radio_stations.csv'
     stations = load_stations(stations_file)
     current_row = 0
     offset = 0
