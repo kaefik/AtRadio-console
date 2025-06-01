@@ -10,7 +10,9 @@ import os
 from datetime import datetime
 import click
 import telnetlib
-from ui.ui_interface import select_file_from_list, get_input, show_confirmation, text_field_unicode
+from ui.ui_interface import select_file_from_list, get_input, show_confirmation, text_field_unicode, get_valid_url
+
+
 
 
 def set_vlc_volume(volume: int):
@@ -332,7 +334,7 @@ def main(stdscr, autoplay):
                         url_y = h//2 + 1
                         url_x = w//2 - len(url_prompt)//2
                         stdscr.addstr(url_y, url_x, url_prompt)
-                        url = text_field_unicode(stdscr, url_y, url_x+len(url_prompt), 50, "")
+                        url = get_valid_url(stdscr, url_y, url_x + len(url_prompt), 50)
                         
                         if url and url.strip():
                             # Добавляем новую станцию
@@ -393,7 +395,7 @@ def main(stdscr, autoplay):
                         prompt = "Редактирование URL (Enter - подтвердить, Esc - отмена):"
                         stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)
                         width= len(new_url) if len(new_url)>50 else 50
-                        new_url = text_field_unicode(stdscr, h//2, w//2 - len(new_url)//2, width, new_url)
+                        new_url = get_valid_url(stdscr, h//2, w//2 - len(new_url)//2, width, new_url)
 
                         if new_name and new_url:
                             # Сохраняем изменения
