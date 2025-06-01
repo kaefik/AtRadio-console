@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 import click
 import telnetlib
-from ui.ui_interface import text_field, select_file_from_list, get_input, show_confirmation
+from ui.ui_interface import text_field, select_file_from_list, get_input, show_confirmation, text_field_unicode
 
 
 def set_vlc_volume(volume: int):
@@ -298,7 +298,7 @@ def main(stdscr, autoplay):
                     name_y = h//2 - 1
                     name_x = w//2 - len(name_prompt)//2
                     stdscr.addstr(name_y, name_x, name_prompt)
-                    name = text_field(stdscr, name_y, name_x+len(name_prompt), 50, "", russian=True)
+                    name = text_field_unicode(stdscr, name_y, name_x+len(name_prompt), 50, "", russian=True)
                     
                     if name and name.strip():
                         # Получаем URL станции
