@@ -182,7 +182,7 @@ def main(stdscr, autoplay):
 
     vlc_prg = ""
     os_name = platform.system()
-    vlc_prg = "C:\\Program Files (x86)\\VideoLAN\VLC\\vlc.exe" if os_name == "Windows" else "vlc"
+    vlc_prg = "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe" if os_name == "Windows" else "vlc"
     # Проверяем, есть ли VLC в системе (только для Linux/macOS)
     if os_name != "Windows":
         check_installed = subprocess.run(
