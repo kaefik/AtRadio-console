@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 import click
 import telnetlib
-from ui.ui_interface import text_field, select_file_from_list, get_input, show_confirmation, text_field_unicode
+from ui.ui_interface import select_file_from_list, get_input, show_confirmation, text_field_unicode
 
 
 def set_vlc_volume(volume: int):
@@ -306,7 +306,7 @@ def main(stdscr, autoplay):
                         url_y = h//2 + 1
                         url_x = w//2 - len(url_prompt)//2
                         stdscr.addstr(url_y, url_x, url_prompt)
-                        url = text_field(stdscr, url_y, url_x+len(url_prompt), 50, "")
+                        url = text_field_unicode(stdscr, url_y, url_x+len(url_prompt), 50, "")
                         
                         if url and url.strip():
                             # Добавляем новую станцию
@@ -360,14 +360,14 @@ def main(stdscr, autoplay):
                         prompt = "Редактирование названия (Enter - подтвердить, Esc - отмена):"
                         stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)                        
                         width= len(new_name) if len(new_name)>50 else 50
-                        new_name =text_field(stdscr, h//2, w//2 - len(new_name)//2, width, new_name, russian=True)
+                        new_name =text_field_unicode(stdscr, h//2, w//2 - len(new_name)//2, width, new_name, russian=True)
 
                         # Шаг 2: Редактирование URL
                         stdscr.clear()
                         prompt = "Редактирование URL (Enter - подтвердить, Esc - отмена):"
                         stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)
                         width= len(new_url) if len(new_url)>50 else 50
-                        new_url = text_field(stdscr, h//2, w//2 - len(new_url)//2, width, new_url)
+                        new_url = text_field_unicode(stdscr, h//2, w//2 - len(new_url)//2, width, new_url)
 
                         if new_name and new_url:
                             # Сохраняем изменения
@@ -381,7 +381,7 @@ def main(stdscr, autoplay):
                     stdscr.addstr(h//2 - 2, w//2 - len(prompt)//2, prompt)                
                     filename = f"{current_date}-radio_stations"
                     width = 50
-                    new_filename = text_field(stdscr, h//2, w//2 - len(filename)//2, width, filename)
+                    new_filename = text_field_unicode(stdscr, h//2, w//2 - len(filename)//2, width, filename)
                     if new_filename and len(new_filename)>0:                        
                         filename = f"{new_filename}.csv"
                         save_stations(filename, stations)
