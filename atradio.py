@@ -47,6 +47,8 @@ def vlc_open(vlc_prg, name_station:str):
         stderr=subprocess.PIPE,
     )
 
+# функции перерисовки частей интерфейса UI
+
 def draw_header(stdscr, title, sub_title):
     h, w = stdscr.getmaxyx()
     title_x = max(0, w//2 - len(title)//2)
@@ -154,6 +156,8 @@ def full_redraw(stdscr, stations, current_row, offset, playing_index, move_mode,
     stdscr.refresh()
     return True
 
+# END функции перерисовки частей интерфейса UI
+
 def main(stdscr, autoplay):
     # Инициализация цветов (перенесено внутрь main)
     curses.start_color()
@@ -232,12 +236,22 @@ def main(stdscr, autoplay):
                     current_row = moving_index
                     if playing_index == moving_index:
                         playing_index += 1
+                    # Прокрутка вверх, если текущая строка выше видимой области
+                    if current_row < offset:
+                        offset = current_row
+                        need_redraw = True
                 elif key == curses.KEY_DOWN and moving_index < len(stations)-1:
                     stations[moving_index], stations[moving_index+1] = stations[moving_index+1], stations[moving_index]
                     moving_index += 1
                     current_row = moving_index
                     if playing_index == moving_index:
                         playing_index -= 1
+                    # Прокрутка вниз, если текущая строка ниже видимой области
+                    h, w = stdscr.getmaxyx()
+                    max_display = h - 6
+                    if current_row >= offset + max_display:
+                        offset = current_row - max_display + 1
+                        need_redraw = True
                 elif key in [curses.KEY_ENTER, 10, 13]:
                     save_stations(stations_file, stations)
                     if move_mode_playing:
@@ -256,6 +270,11 @@ def main(stdscr, autoplay):
             else:
                 if key == curses.KEY_UP and current_row > 0:
                     current_row -= 1
+                    # Прокрутка вверх, если текущая строка выше видимой области
+                    if current_row < offset:
+                        offset = current_row
+                        need_redraw = True
+                        continue
                     # Частичная перерисовка только списка станций и строк состояния
                     h, w = stdscr.getmaxyx()
                     draw_stations_list(stdscr, stations, current_row, offset, playing_index, move_mode, h-6)
@@ -263,6 +282,13 @@ def main(stdscr, autoplay):
                     need_redraw = False
                 elif key == curses.KEY_DOWN and current_row < len(stations)-1:
                     current_row += 1
+                    # Прокрутка вниз, если текущая строка ниже видимой области
+                    h, w = stdscr.getmaxyx()
+                    max_display = h - 6
+                    if current_row >= offset + max_display:
+                        offset = current_row - max_display + 1
+                        need_redraw = True
+                        continue
                     h, w = stdscr.getmaxyx()
                     draw_stations_list(stdscr, stations, current_row, offset, playing_index, move_mode, h-6)
                     draw_status_lines(stdscr, stations, current_row, playing_index, current_volume, move_mode, move_mode_playing, moving_index)
