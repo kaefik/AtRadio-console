@@ -44,7 +44,7 @@ def save_stations(filename, stations):
 def vlc_open(vlc_prg, name_station:str):
     # запуск процесса vlc
     return subprocess.Popen(
-        [vlc_prg, "--intf", "dummy", "--rc-host", "localhost:5000", name_station],
+        [vlc_prg, "--intf", "rc", "--rc-host", "localhost:5000", name_station],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
